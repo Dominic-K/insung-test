@@ -91,7 +91,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 <section id="home">
   <div class="top">
     <h1>환경공무관 인성검사 연습</h1>
-    <p class="muted">500문항 중 200문항을 무작위로 뽑아 풉니다. 끝나면 일관성, 허구성, 위험 신호, 직무 적합도를 채점해 피드백을 드려요.</p>
+    <p class="muted">1000문항 중 400문항을 무작위로 뽑아 무작위 순서로 풉니다. 끝나면 일관성, 허구성, 위험 신호, 직무 적합도를 채점해 피드백을 드려요.</p>
   </div>
   <div class="sheet">
     <div class="strip" id="strip" aria-hidden="true"></div>
@@ -99,8 +99,8 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
       <p><b>시간 제한</b></p>
       <div class="row" id="limits">
         <label class="opt"><input type="radio" name="lim" value="0"> 없음</label>
-        <label class="opt"><input type="radio" name="lim" value="1800" checked> 30분</label>
-        <label class="opt"><input type="radio" name="lim" value="1200"> 20분 (실전 압박)</label>
+        <label class="opt"><input type="radio" name="lim" value="3600" checked> 60분</label>
+        <label class="opt"><input type="radio" name="lim" value="2700"> 45분 (실전 압박)</label>
       </div>
       <div class="row" style="margin-top:18px">
         <button class="main" id="startBtn">시작</button>
@@ -150,8 +150,8 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}
 <script>
 {
 const LABELS = ['전혀 아니다','아니다','보통이다','그렇다','매우 그렇다'];
-const N = 200;           // 한 번에 푸는 문항 수
-const KEY = 'insung-test-v1';
+const N = 400;           // 한 번에 푸는 문항 수
+const KEY = 'insung-test-v2';
 
 // 척도 정보: 이름, 낮을 때 조언, 면접 예상 질문
 const SC = {
@@ -165,7 +165,7 @@ const SC = {
   L:{n:'허구성'}
 };
 const FIT = ['C','R','T','E','A','S','W'];
-const QUOTA = {C:14,R:14,T:14,E:14,A:12,S:10,W:12,L:10}; // 쌍 개수. 합계 100쌍 = 200문항
+const QUOTA = {C:28,R:28,T:28,E:28,A:24,S:20,W:24,L:20}; // 쌍 개수. 합계 200쌍 = 400문항
 
 // 문항 은행 읽기: 한 쌍마다 문항 두 개(id = 쌍번호*2, 쌍번호*2+1)
 const PAIRS = [], ITEMS = [];
@@ -188,7 +188,7 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } c
 
 let sess = null, shownAt = 0, tick = null, busy = false;
 
-// ── 세션 만들기: 척도별 할당만큼 쌍을 뽑고, 짝끼리는 최소 20문항 떨어뜨림
+// ── 세션 만들기: 척도별 할당만큼 쌍을 뽑고, 짝끼리는 최소 30문항 떨어뜨림
 function newSession(limit) {
   const pick = [];
   for (const s in QUOTA) {
@@ -196,9 +196,9 @@ function newSession(limit) {
     pick.push(...pool.slice(0, QUOTA[s]));
   }
   const order = shuffle(pick.flatMap(p => PAIRS[p].ids));
-  for (let round = 0; round < 3000; round++) {
+  for (let round = 0; round < 6000; round++) {
     const pos = {}; order.forEach((id, i) => pos[id] = i);
-    const bad = pick.find(p => Math.abs(pos[p*2] - pos[p*2+1]) < 20);
+    const bad = pick.find(p => Math.abs(pos[p*2] - pos[p*2+1]) < 30);
     if (bad === undefined) break;
     const i = pos[bad*2+1], j = Math.floor(Math.random()*order.length);
     [order[i], order[j]] = [order[j], order[i]];
@@ -316,7 +316,7 @@ function score(s) {
   else if (con < 85) add('warn', `일관성 ${con}%: 조금 흔들려요`, '대부분 일관되지만 몇몇 짝 문항에서 답이 엇갈렸어요. "그렇다"와 "아니다"가 뒤집히는 역문항을 대충 읽고 답했을 가능성이 커요. 문장 끝까지 읽는 습관을 들이세요.');
   if (lie > 65) add('bad', `허구성 ${lie}점: 꾸며서 답한 것으로 보여요`, '"한 번도 ~한 적 없다", "모든 사람을 좋아한다" 같은 문항에 그렇다고 답한 경우가 많아요. 이런 문항은 거짓말을 잡아내려고 넣은 거예요. 누구나 하는 일을 솔직하게 인정해도 감점되지 않아요. 오히려 부정하면 다른 척도 점수까지 믿을 수 없다고 판단돼요.');
   else if (lie > 45) add('warn', `허구성 ${lie}점: 약간 좋게 보이려는 경향`, '완벽한 사람처럼 답한 문항이 몇 개 있어요. 아래 목록의 문항들은 솔직하게 답하는 게 더 안전해요.');
-  if (risk.length >= 3) add('bad', `위험 신호 ${risk.length}개`, '공격성, 규칙 무시, 우울·불신 같은 위험 문항에 "그렇다" 쪽으로 답했어요. 이 문항들은 부적격 판정과 직접 연결돼요. 정말 내 모습이 맞는지 다시 생각해 보세요. 특히 우울·무기력 문항이 실제 지금 상태라면, 시험과 별개로 가까운 사람이나 상담 기관과 꼭 이야기해 보세요.');
+  if (risk.length >= 4) add('bad', `위험 신호 ${risk.length}개`, '공격성, 규칙 무시, 우울·불신 같은 위험 문항에 "그렇다" 쪽으로 답했어요. 이 문항들은 부적격 판정과 직접 연결돼요. 정말 내 모습이 맞는지 다시 생각해 보세요. 특히 우울·무기력 문항이 실제 지금 상태라면, 시험과 별개로 가까운 사람이나 상담 기관과 꼭 이야기해 보세요.');
   else if (risk.length) add('warn', `위험 신호 ${risk.length}개`, '위험 문항 몇 개에 "그렇다" 쪽으로 답했어요. 실수로 잘못 읽은 건 아닌지 아래 목록에서 확인해 보세요.');
   if (st.miss > N * 0.05) add('bad', `미응답 ${st.miss}문항`, '시간 안에 다 풀지 못했어요. 실제 검사도 미응답이 많으면 불리해요. 한 문항에 5초 안쪽으로 답하는 연습을 하세요.');
   else if (st.miss) add('warn', `미응답 ${st.miss}문항`, '몇 문항을 시간 안에 못 풀었어요. 속도를 조금만 올리면 돼요.');
@@ -350,7 +350,7 @@ function renderResult(R) {
   <div class="kpi">
     <div><b class="c-${lvOf(R.con,85,70)}">${R.con}%</b><span>일관성 (85% 이상 안정)</span></div>
     <div><b class="c-${lvOf(R.lie,45,65,1)}">${R.lie}</b><span>허구성 (45 이하 안정)</span></div>
-    <div><b class="c-${lvOf(R.risk.length,0,2,1)}">${R.risk.length}개</b><span>위험 신호 (0개 안정)</span></div>
+    <div><b class="c-${lvOf(R.risk.length,0,3,1)}">${R.risk.length}개</b><span>위험 신호 (0개 안정)</span></div>
     <div><b>${st.avg}초</b><span>평균 응답 시간</span></div>
   </div>
 
@@ -369,7 +369,7 @@ function renderResult(R) {
 
   ${R.conflicts.length ? `<h2>앞뒤가 안 맞은 답 (${R.conflicts.length}쌍)</h2>
   <p class="muted">같은 성향을 다르게 물은 문항이에요. 둘 중 어느 쪽이 진짜 내 모습인지 정해 두세요.</p>
-  ${R.conflicts.slice(0, 15).map(c => `<div class="pair"><div><span>${esc(ITEMS[c.a].t)}</span><em>${lab(R.r[c.a])}</em></div><div style="margin-top:6px"><span>${esc(ITEMS[c.b].t)}</span><em>${lab(R.r[c.b])}</em></div></div>`).join('')}` : ''}
+  ${R.conflicts.slice(0, 20).map(c => `<div class="pair"><div><span>${esc(ITEMS[c.a].t)}</span><em>${lab(R.r[c.a])}</em></div><div style="margin-top:6px"><span>${esc(ITEMS[c.b].t)}</span><em>${lab(R.r[c.b])}</em></div></div>`).join('')}` : ''}
 
   ${R.risk.length ? `<h2>위험 신호로 잡힌 문항</h2>
   ${R.risk.map(id => `<div class="pair"><div><span>${esc(ITEMS[id].t)}</span><em>${lab(R.r[id])}</em></div></div>`).join('')}` : ''}
