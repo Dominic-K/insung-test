@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인성검사 연습</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* VOICE 실전 연습장. 조용하고 정돈된 시험지 느낌
+   IDEA OMR 답안지: 빨간 인쇄선, 칠하는 동그라미, 문항 번호 칸
+   PICTURE 문제 화면 자체가 답안지 한 줄. 결과는 척도별 막대
+   COLOUR 흰 종이, 검정 잉크, OMR 빨강, 판정용 초록·주황
+   TYPE IBM Plex Sans KR 하나로 굵기만 바꿔 씀
+   LAYOUT 폰 기준 한 열. 넓은 화면은 가운데 720px */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#141215);--ink:light-dark(#18171b,#efeaee);--soft:light-dark(#5f5a63,#b3abb4);--omr:light-dark(#d1335f,#ff6f96);--omr2:light-dark(#fdecf1,#2a1a20);--line:light-dark(#f2c3d1,#4a2a35);--ok:light-dark(#1f8a4c,#4fd08a);--warn:light-dark(#c46a00,#ffad42);--bad:light-dark(#c8102e,#ff5c6c)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 "IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;overflow-x:clip}
+main{max-width:720px;margin:0 auto;padding:0 max(16px,4vw) 48px}
+h1{font-size:clamp(32px,7vw,44px);line-height:1.1;letter-spacing:-.02em;margin:0 0 10px;text-wrap:balance}
+h2{font-size:20px;margin:36px 0 12px;letter-spacing:-.01em}
+p{margin:0 0 12px}
+.muted{color:var(--soft);font-size:14px}
+.sheet{border:2px solid var(--omr);border-radius:6px;background:var(--bg)}
+.top{padding:36px 0 8px}
+.strip{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;padding:14px;border-bottom:1px solid var(--line);background:var(--omr2)}
+.strip i{aspect-ratio:1;border:1.5px solid var(--omr);border-radius:50%;display:block}
+.strip i.f{background:var(--ink);border-color:var(--ink)}
+.box{padding:18px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+label.opt{display:flex;gap:8px;align-items:center;min-height:44px;padding:0 14px;border:1.5px solid var(--line);border-radius:999px;cursor:pointer}
+label.opt:has(input:checked){border-color:var(--omr);background:var(--omr2)}
+label.opt input{accent-color:var(--omr);width:18px;height:18px}
+button{font:inherit;font-weight:600;min-height:48px;padding:0 22px;border-radius:8px;border:2px solid var(--ink);background:var(--bg);color:var(--ink);cursor:pointer}
+button.main{background:var(--omr);border-color:var(--omr);color:#fff}
+button:focus-visible,label.opt:focus-within{outline:3px solid var(--omr);outline-offset:2px}
+button:disabled{opacity:.4;cursor:default}
+ul.facts{margin:0;padding-left:20px}
+ul.facts li{margin-bottom:6px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+/* 검사 화면 */
+.bar{position:sticky;top:0;background:var(--bg);padding:12px 0 10px;z-index:2;border-bottom:1px solid var(--line)}
+.meta{display:flex;justify-content:space-between;font-weight:600;font-variant-numeric:tabular-nums}
+.meta .t.low{color:var(--bad)}
+.prog{height:6px;background:var(--omr2);border-radius:3px;margin-top:8px;overflow:hidden}
+.prog b{display:block;height:100%;background:var(--omr);width:0;transition:width .2s}
+.q{display:grid;grid-template-columns:64px minmax(0,1fr);margin-top:20px}
+.qn{background:var(--omr2);border-right:2px solid var(--omr);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:var(--omr);font-variant-numeric:tabular-nums}
+.qt{padding:22px 18px;font-size:clamp(19px,4.6vw,23px);line-height:1.45;font-weight:600;min-height:132px;display:flex;align-items:center}
+.choices{display:grid;gap:8px;margin-top:16px}
+.choices button{display:flex;align-items:center;gap:14px;text-align:left;border:1.5px solid var(--line);font-weight:600;min-height:54px}
+.choices button .b{flex:none;width:30px;height:30px;border:2px solid var(--omr);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--omr);font-size:14px}
+.choices button.on{border-color:var(--ink)}
+.choices button.on .b{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+@media(hover:hover){.choices button:hover{background:var(--omr2)}}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:18px}
+/* 결과 */
+.verdict{padding:22px 18px;border-radius:6px;color:#fff;margin-top:24px}
+.verdict.ok{background:var(--ok)}.verdict.warn{background:var(--warn)}.verdict.bad{background:var(--bad)}
+.verdict strong{display:block;font-size:clamp(30px,8vw,44px);line-height:1.1;margin-bottom:6px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5em,1fr));gap:10px;margin-top:14px}
+.kpi div{border:1.5px solid var(--line);border-radius:6px;padding:12px 14px}
+.kpi b{display:block;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi span{font-size:14px;color:var(--soft)}
+.c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-bad{color:var(--bad)}
+.sc{display:grid;grid-template-columns:7.5em minmax(0,1fr) 3em;gap:10px;align-items:center;margin-bottom:10px}
+.sc .tr{height:14px;background:var(--omr2);border-radius:7px;overflow:hidden}
+.sc .tr b{display:block;height:100%;border-radius:7px}
+.sc .v{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.fb{border-left:4px solid var(--line);padding:4px 0 4px 14px;margin-bottom:14px}
+.fb.bad{border-color:var(--bad)}.fb.warn{border-color:var(--warn)}.fb.ok{border-color:var(--ok)}
+.fb b{display:block}
+.pair{border:1.5px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:10px;font-size:15px}
+.pair div{display:flex;justify-content:space-between;gap:12px}
+.pair em{font-style:normal;font-weight:700;color:var(--omr);white-space:nowrap}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.prog b{transition:none}}
+</style>
+</head>
+<body>
+<main>
+
+<!-- 시작 화면 -->
+<section id="home">
+  <div class="top">
+    <h1>환경공무관 인성검사 연습</h1>
+    <p class="muted">500문항 중 200문항을 무작위로 뽑아 풉니다. 끝나면 일관성, 허구성, 위험 신호, 직무 적합도를 채점해 피드백을 드려요.</p>
+  </div>
+  <div class="sheet">
+    <div class="strip" id="strip" aria-hidden="true"></div>
+    <div class="box">
+      <p><b>시간 제한</b></p>
+      <div class="row" id="limits">
+        <label class="opt"><input type="radio" name="lim" value="0"> 없음</label>
+        <label class="opt"><input type="radio" name="lim" value="1800" checked> 30분</label>
+        <label class="opt"><input type="radio" name="lim" value="1200"> 20분 (실전 압박)</label>
+      </div>
+      <div class="row" style="margin-top:18px">
+        <button class="main" id="startBtn">시작</button>
+        <button id="resumeBtn" hidden>이어서 풀기</button>
+        <button id="lastBtn" hidden>지난 결과 보기</button>
+      </div>
+    </div>
+  </div>
+
+  <h2>푸는 요령</h2>
+  <ul class="facts">
+    <li>오래 고민하지 말고 떠오르는 대로 답하세요. 한 문항에 5초 안쪽이 적당해요.</li>
+    <li>같은 성향을 표현만 바꿔서 다시 묻는 문항이 섞여 있어요. 앞뒤가 맞는지가 제일 중요해요.</li>
+    <li>"한 번도 ~한 적 없다" 같은 문항은 솔직하게 답하세요. 사람이면 누구나 하는 일이에요.</li>
+    <li>숫자 키 1~5로도 답할 수 있어요. 잘못 누르면 "이전"으로 돌아가 고치면 돼요.</li>
+  </ul>
+
+  <div id="histWrap" hidden>
+    <h2>지난 기록</h2>
+    <div class="scroll"><table id="hist"></table></div>
+  </div>
+  <p class="muted" style="margin-top:28px">연습용 채점이에요. 실제 검사 기관의 판정 기준과는 다르며, 응답 습관을 점검하는 용도로만 쓰세요. 기록은 이 브라우저에만 저장돼요.</p>
+</section>
+
+<!-- 검사 화면 -->
+<section id="test" hidden>
+  <div class="bar">
+    <div class="meta"><span id="cnt">1 / 200</span><span class="t" id="timer"></span></div>
+    <div class="prog"><b id="progBar"></b></div>
+  </div>
+  <div class="sheet q">
+    <div class="qn" id="qn">1</div>
+    <div class="qt" id="qt"></div>
+  </div>
+  <div class="choices" id="choices"></div>
+  <div class="nav">
+    <button id="prevBtn">이전</button>
+    <button id="pauseBtn">중단하고 저장</button>
+  </div>
+</section>
+
+<!-- 결과 화면 -->
+<section id="result" hidden></section>
+
+</main>
+<script src="questions.js"></script>
+<script>
+{
+const LABELS = ['전혀 아니다','아니다','보통이다','그렇다','매우 그렇다'];
+const N = 200;           // 한 번에 푸는 문항 수
+const KEY = 'insung-test-v1';
+
+// 척도 정보: 이름, 낮을 때 조언, 면접 예상 질문
+const SC = {
+  C:{n:'성실·책임', low:'일을 미루거나 대충 넘긴다는 쪽으로 답한 문항이 많아요. 실제 모습보다 낮게 답한 건 아닌지 확인해 보세요.', q:'맡은 일을 끝까지 책임지고 해낸 경험이 있나요?'},
+  R:{n:'규칙·안전', low:'규칙이나 안전수칙을 상황에 따라 어겨도 된다는 쪽으로 답했어요. 환경공무관은 차량·도로 작업이 많아 이 척도를 특히 엄격하게 봐요.', q:'규칙이 비효율적이라고 느껴질 때 어떻게 하시겠어요?'},
+  T:{n:'협동·대인관계', low:'혼자 일하는 쪽, 동료와 거리를 두는 쪽으로 답한 문항이 많아요. 이 일은 조를 짜서 하기 때문에 협동성이 낮게 나오면 면접에서 바로 질문이 나와요.', q:'동료와 의견이 부딪치면 어떻게 해결하시겠어요?'},
+  E:{n:'정서 안정', low:'불안, 걱정, 기분 변화 쪽 문항에 그렇다고 답한 경우가 많아요. 실제로 요즘 힘들다면 시험과 별개로 믿을 만한 사람과 이야기해 보는 게 좋아요.', q:'스트레스를 받으면 어떻게 푸시나요?'},
+  A:{n:'감정 조절', low:'화가 나면 바로 표현한다는 쪽으로 답했어요. 공격성은 부적격 판정과 직접 연결되는 영역이에요.', q:'누군가 때문에 크게 화가 났던 경험과 그때 어떻게 했는지 말해 보세요.'},
+  S:{n:'민원 응대', low:'주민 응대를 귀찮거나 내 일이 아니라고 보는 쪽으로 답했어요. 공무관은 현장에서 주민을 가장 많이 만나는 사람이에요.', q:'주민이 무리한 요구를 하거나 화를 내면 어떻게 하시겠어요?'},
+  W:{n:'근무환경 적응', low:'새벽 근무, 날씨, 육체노동을 힘들어하는 쪽으로 답했어요. 면접에서 "오래 할 수 있겠냐"는 질문으로 반드시 확인하는 부분이에요.', q:'새벽 근무와 궂은 날씨 작업을 오래 하실 수 있겠어요?'},
+  L:{n:'허구성'}
+};
+const FIT = ['C','R','T','E','A','S','W'];
+const QUOTA = {C:14,R:14,T:14,E:14,A:12,S:10,W:12,L:10}; // 쌍 개수. 합계 100쌍 = 200문항
+
+// 문항 은행 읽기: 한 쌍마다 문항 두 개(id = 쌍번호*2, 쌍번호*2+1)
+const PAIRS = [], ITEMS = [];
+window.BANK_TEXT.trim().split('\n').forEach((line, p) => {
+  const [s, a, b] = line.split('|');
+  PAIRS.push({s, ids:[p*2, p*2+1]});
+  [a, b].forEach(x => {
+    const risk = x[1] === '!';
+    ITEMS.push({p, s, k: x[0] === '+' ? 1 : -1, risk, t: x.slice(risk ? 2 : 1)});
+  });
+});
+
+const $ = id => document.getElementById(id);
+const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const shuffle = a => { for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+let store = {hist:[]};
+try { store = JSON.parse(localStorage.getItem(KEY)) || store; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} };
+
+let sess = null, shownAt = 0, tick = null, busy = false;
+
+// ── 세션 만들기: 척도별 할당만큼 쌍을 뽑고, 짝끼리는 최소 20문항 떨어뜨림
+function newSession(limit) {
+  const pick = [];
+  for (const s in QUOTA) {
+    const pool = shuffle(PAIRS.map((x, i) => i).filter(i => PAIRS[i].s === s));
+    pick.push(...pool.slice(0, QUOTA[s]));
+  }
+  const order = shuffle(pick.flatMap(p => PAIRS[p].ids));
+  for (let round = 0; round < 3000; round++) {
+    const pos = {}; order.forEach((id, i) => pos[id] = i);
+    const bad = pick.find(p => Math.abs(pos[p*2] - pos[p*2+1]) < 20);
+    if (bad === undefined) break;
+    const i = pos[bad*2+1], j = Math.floor(Math.random()*order.length);
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return {order, pairs: pick, ans: Array(N).fill(null), ms: Array(N).fill(null), i: 0, limit, used: 0, date: Date.now()};
+}
+
+// ── 화면 전환
+function show(id) { ['home','test','result'].forEach(x => $(x).hidden = x !== id); window.scrollTo(0, 0); }
+
+function renderHome() {
+  $('strip').innerHTML = Array.from({length:20}, (_, i) => `<i class="${[2,7,9,13,16].includes(i) ? 'f' : ''}"></i>`).join('');
+  $('resumeBtn').hidden = !store.cur;
+  $('lastBtn').hidden = !store.last;
+  const h = store.hist.slice(-8).reverse();
+  $('histWrap').hidden = !h.length;
+  $('hist').innerHTML = '<tr><th>날짜</th><th>판정</th><th>일관성</th><th>허구성</th><th>위험</th></tr>' +
+    h.map(r => `<tr><td>${esc(new Date(r.date).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}))}</td><td class="c-${esc(r.lv)}">${esc(r.word)}</td><td class="n">${esc(r.con)}%</td><td class="n">${esc(r.lie)}</td><td class="n">${esc(r.risk)}개</td></tr>`).join('');
+  show('home');
+}
+
+// ── 검사 화면
+function renderQ() {
+  const it = ITEMS[sess.order[sess.i]];
+  $('cnt').textContent = `${sess.i + 1} / ${N}`;
+  $('qn').textContent = sess.i + 1;
+  $('qt').textContent = it.t;
+  $('progBar').style.width = (sess.i / N * 100) + '%';
+  $('choices').innerHTML = LABELS.map((l, k) => `<button data-v="${k+1}" class="${sess.ans[sess.i] === k+1 ? 'on' : ''}"><span class="b">${k+1}</span>${l}</button>`).join('');
+  $('prevBtn').disabled = sess.i === 0;
+  shownAt = Date.now();
+  busy = false;
+}
+
+function renderTimer() {
+  if (!sess.limit) { $('timer').textContent = ''; return; }
+  const left = Math.max(0, sess.limit - Math.floor(sess.used / 1000));
+  $('timer').textContent = `남은 시간 ${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
+  $('timer').classList.toggle('low', left < 120);
+  if (left === 0) finish();
+}
+
+function startTest() {
+  show('test');
+  renderQ(); renderTimer();
+  let last = Date.now();
+  clearInterval(tick);
+  tick = setInterval(() => { const now = Date.now(); sess.used += now - last; last = now; renderTimer(); }, 500);
+}
+
+function answer(v) {
+  if (busy) return;
+  busy = true;
+  if (sess.ms[sess.i] === null) sess.ms[sess.i] = Date.now() - shownAt; // 처음 답한 시간만 기록
+  sess.ans[sess.i] = v;
+  [...$('choices').children].forEach(b => b.classList.toggle('on', +b.dataset.v === v));
+  store.cur = sess; save();
+  setTimeout(() => { sess.i++; sess.i >= N ? finish() : renderQ(); }, 160);
+}
+
+function finish() {
+  clearInterval(tick);
+  const r = score(sess);
+  store.hist.push({date: sess.date, lv: r.lv, word: r.word, con: r.con, lie: r.lie, risk: r.risk.length});
+  store.hist = store.hist.slice(-30);
+  store.last = sess; delete store.cur; save();
+  renderResult(r);
+}
+
+// ── 채점
+function score(s) {
+  const r = {}; // 문항 id → 응답
+  s.order.forEach((id, i) => { if (s.ans[i] !== null) r[id] = s.ans[i]; });
+  const keyed = id => ITEMS[id].k > 0 ? r[id] : 6 - r[id]; // 역문항 뒤집기
+
+  // 척도 점수: 평균(1~5)을 0~100으로
+  const scale = {};
+  for (const k in SC) {
+    const ids = s.order.filter(id => ITEMS[id].s === k && r[id] != null);
+    scale[k] = ids.length ? Math.round((ids.reduce((a, id) => a + keyed(id), 0) / ids.length - 1) / 4 * 100) : 0;
+  }
+
+  // 일관성: 짝 문항의 (뒤집은) 점수 차이가 1 이하면 일관
+  const conflicts = []; let both = 0, okPairs = 0;
+  s.pairs.forEach(p => {
+    const [a, b] = PAIRS[p].ids;
+    if (r[a] == null || r[b] == null) return;
+    both++;
+    const d = Math.abs(keyed(a) - keyed(b));
+    if (d <= 1) okPairs++;
+    if (d >= 3) conflicts.push({a, b, d});
+  });
+  const con = both ? Math.round(okPairs / both * 100) : 0;
+
+  const answered = s.ans.filter(v => v !== null);
+  const n = answered.length || 1;
+  const risk = s.order.filter(id => ITEMS[id].risk && r[id] >= 4);
+  const lieItems = s.order.filter(id => ITEMS[id].s === 'L' && r[id] != null && keyed(id) >= 4);
+  const ms = s.ms.filter(v => v !== null);
+  const st = {
+    answered: answered.length,
+    miss: N - answered.length,
+    ext: Math.round(answered.filter(v => v === 1 || v === 5).length / n * 100),
+    mid: Math.round(answered.filter(v => v === 3).length / n * 100),
+    fast: ms.filter(v => v < 1000).length,
+    avg: ms.length ? (ms.reduce((a, b) => a + b, 0) / ms.length / 1000).toFixed(1) : '0'
+  };
+  const lie = scale.L;
+  const fitAvg = Math.round(FIT.reduce((a, k) => a + scale[k], 0) / FIT.length);
+
+  // 피드백 목록 (심각도 bad > warn > ok)
+  const fb = [];
+  const add = (lv, t, d) => fb.push({lv, t, d});
+  if (con < 70) add('bad', `일관성 ${con}%: 응답의 신뢰도가 낮아요`, `같은 성향을 묻는 짝 문항에 반대로 답한 경우가 ${conflicts.length}쌍이에요. 실제 검사에서는 결과 자체가 "신뢰할 수 없음"으로 처리될 수 있는, 가장 위험한 부분이에요. 아래 모순 목록을 보고 "나는 이런 사람"이라는 기준을 한 줄로 정한 뒤 다시 풀어 보세요.`);
+  else if (con < 85) add('warn', `일관성 ${con}%: 조금 흔들려요`, '대부분 일관되지만 몇몇 짝 문항에서 답이 엇갈렸어요. "그렇다"와 "아니다"가 뒤집히는 역문항을 대충 읽고 답했을 가능성이 커요. 문장 끝까지 읽는 습관을 들이세요.');
+  if (lie > 65) add('bad', `허구성 ${lie}점: 꾸며서 답한 것으로 보여요`, '"한 번도 ~한 적 없다", "모든 사람을 좋아한다" 같은 문항에 그렇다고 답한 경우가 많아요. 이런 문항은 거짓말을 잡아내려고 넣은 거예요. 누구나 하는 일을 솔직하게 인정해도 감점되지 않아요. 오히려 부정하면 다른 척도 점수까지 믿을 수 없다고 판단돼요.');
+  else if (lie > 45) add('warn', `허구성 ${lie}점: 약간 좋게 보이려는 경향`, '완벽한 사람처럼 답한 문항이 몇 개 있어요. 아래 목록의 문항들은 솔직하게 답하는 게 더 안전해요.');
+  if (risk.length >= 3) add('bad', `위험 신호 ${risk.length}개`, '공격성, 규칙 무시, 우울·불신 같은 위험 문항에 "그렇다" 쪽으로 답했어요. 이 문항들은 부적격 판정과 직접 연결돼요. 정말 내 모습이 맞는지 다시 생각해 보세요. 특히 우울·무기력 문항이 실제 지금 상태라면, 시험과 별개로 가까운 사람이나 상담 기관과 꼭 이야기해 보세요.');
+  else if (risk.length) add('warn', `위험 신호 ${risk.length}개`, '위험 문항 몇 개에 "그렇다" 쪽으로 답했어요. 실수로 잘못 읽은 건 아닌지 아래 목록에서 확인해 보세요.');
+  if (st.miss > N * 0.05) add('bad', `미응답 ${st.miss}문항`, '시간 안에 다 풀지 못했어요. 실제 검사도 미응답이 많으면 불리해요. 한 문항에 5초 안쪽으로 답하는 연습을 하세요.');
+  else if (st.miss) add('warn', `미응답 ${st.miss}문항`, '몇 문항을 시간 안에 못 풀었어요. 속도를 조금만 올리면 돼요.');
+  if (st.ext > 65) add('warn', `극단 응답 ${st.ext}%`, '"전혀 아니다", "매우 그렇다"만 너무 많이 골랐어요. 성격이 극단적이거나 생각 없이 찍은 것으로 보일 수 있어요. 확신이 덜한 문항은 "아니다", "그렇다"를 쓰세요.');
+  if (st.mid > 35) add('warn', `"보통이다" ${st.mid}%`, '중간 답이 너무 많아요. 판단을 피하거나 성의 없이 답한 것으로 보일 수 있어요. 한쪽으로 조금이라도 기울면 그쪽을 고르세요.');
+  if (st.fast > st.answered * 0.1) add('warn', `1초 미만 응답 ${st.fast}개`, '문장을 다 읽기 전에 누른 것 같아요. 속도보다 정확하게 읽는 게 먼저예요. 역문항에서 실수가 나요.');
+  if (fitAvg >= 92 && lie > 45) add('warn', '너무 이상적인 응답', '모든 척도가 거의 만점이면서 허구성도 높아요. 실제 검사에서는 "좋게 보이려고 꾸몄다"로 해석될 수 있어요.');
+  FIT.filter(k => scale[k] < 50).forEach(k => add('warn', `${SC[k].n} ${scale[k]}점`, SC[k].low));
+  if (!fb.length) add('ok', '큰 문제가 없어요', '일관되고 솔직하게 답했어요. 실전에서도 지금처럼만 하면 돼요. 남은 시간은 면접 준비에 쓰세요.');
+
+  const nBad = fb.filter(x => x.lv === 'bad').length, nWarn = fb.filter(x => x.lv === 'warn').length;
+  const lv = nBad ? 'bad' : nWarn ? 'warn' : 'ok';
+  const word = {bad:'위험', warn:'주의', ok:'안정권'}[lv];
+  const sum = {bad:'이대로면 부적격으로 걸릴 수 있는 응답 습관이 있어요.', warn:'통과 가능성은 있지만 고쳐야 할 습관이 보여요.', ok:'응답 습관에 큰 문제가 없어요.'}[lv];
+  return {scale, con, conflicts, lie, lieItems, risk, st, fb, lv, word, sum, r};
+}
+
+// ── 결과 화면
+function renderResult(R) {
+  const s = store.last;
+  const st = R.st, lab = v => v == null ? '미응답' : LABELS[v-1];
+  const lvOf = (v, g, w, inv) => inv ? (v <= g ? 'ok' : v <= w ? 'warn' : 'bad') : (v >= g ? 'ok' : v >= w ? 'warn' : 'bad');
+  const fit = FIT.map(k => ({k, v: R.scale[k]})).sort((a, b) => b.v - a.v);
+  const col = v => v >= 60 ? 'var(--ok)' : v >= 50 ? 'var(--warn)' : 'var(--bad)';
+  const mins = Math.round(s.used / 60000);
+  const order = {bad:0, warn:1, ok:2};
+
+  $('result').innerHTML = `
+  <div class="verdict ${R.lv}"><strong>${R.word}</strong>${esc(R.sum)}<div style="font-size:14px;margin-top:6px;opacity:.9">${new Date(s.date).toLocaleString('ko-KR')} · ${st.answered}/${N}문항 · ${mins}분 소요</div></div>
+
+  <div class="kpi">
+    <div><b class="c-${lvOf(R.con,85,70)}">${R.con}%</b><span>일관성 (85% 이상 안정)</span></div>
+    <div><b class="c-${lvOf(R.lie,45,65,1)}">${R.lie}</b><span>허구성 (45 이하 안정)</span></div>
+    <div><b class="c-${lvOf(R.risk.length,0,2,1)}">${R.risk.length}개</b><span>위험 신호 (0개 안정)</span></div>
+    <div><b>${st.avg}초</b><span>평균 응답 시간</span></div>
+  </div>
+
+  <h2>고쳐야 할 점</h2>
+  ${R.fb.sort((a, b) => order[a.lv] - order[b.lv]).map(f => `<div class="fb ${f.lv}"><b>${esc(f.t)}</b>${esc(f.d)}</div>`).join('')}
+
+  <h2>직무 적합도</h2>
+  <p class="muted">60점 이상이면 무난, 50점 아래면 면접에서 질문받을 수 있는 부분이에요.</p>
+  ${fit.map(x => `<div class="sc"><span>${SC[x.k].n}</span><div class="tr"><b style="width:${x.v}%;background:${col(x.v)}"></b></div><span class="v">${x.v}</span></div>`).join('')}
+
+  <h2>응답 패턴</h2>
+  <ul class="facts">
+    <li>극단 응답(1·5번) ${st.ext}%, "보통이다" ${st.mid}%</li>
+    <li>1초 미만으로 누른 문항 ${st.fast}개, 미응답 ${st.miss}개</li>
+  </ul>
+
+  ${R.conflicts.length ? `<h2>앞뒤가 안 맞은 답 (${R.conflicts.length}쌍)</h2>
+  <p class="muted">같은 성향을 다르게 물은 문항이에요. 둘 중 어느 쪽이 진짜 내 모습인지 정해 두세요.</p>
+  ${R.conflicts.slice(0, 15).map(c => `<div class="pair"><div><span>${esc(ITEMS[c.a].t)}</span><em>${lab(R.r[c.a])}</em></div><div style="margin-top:6px"><span>${esc(ITEMS[c.b].t)}</span><em>${lab(R.r[c.b])}</em></div></div>`).join('')}` : ''}
+
+  ${R.risk.length ? `<h2>위험 신호로 잡힌 문항</h2>
+  ${R.risk.map(id => `<div class="pair"><div><span>${esc(ITEMS[id].t)}</span><em>${lab(R.r[id])}</em></div></div>`).join('')}` : ''}
+
+  ${R.lieItems.length ? `<h2>꾸민 것으로 보이는 답</h2>
+  <p class="muted">사람이면 누구나 한 번쯤 해 본 일을 부정하거나, 누구나 겪는 감정을 없다고 한 문항이에요.</p>
+  ${R.lieItems.map(id => `<div class="pair"><div><span>${esc(ITEMS[id].t)}</span><em>${lab(R.r[id])}</em></div></div>`).join('')}` : ''}
+
+  <h2>면접으로 이어 가기</h2>
+  <p>인성검사 결과를 보고 면접 질문을 만들기도 해요. 이번 결과 기준으로 준비하면 좋은 것:</p>
+  <ul class="facts">
+    <li><b>강점으로 말할 것:</b> ${esc(SC[fit[0].k].n)}, ${esc(SC[fit[1].k].n)}. 이걸 보여 주는 실제 경험 하나씩을 1분 안에 말할 수 있게 준비하세요.</li>
+    <li><b>질문받을 수 있는 것:</b> ${esc(SC[fit[6].k].n)} (${fit[6].v}점). 예상 질문: "${esc(SC[fit[6].k].q)}"</li>
+  </ul>
+
+  <div class="btns"><button class="main" id="againBtn">다시 풀기</button><button id="homeBtn">처음으로</button></div>`;
+  show('result');
+  $('againBtn').onclick = () => { sess = newSession(s.limit); store.cur = sess; save(); startTest(); };
+  $('homeBtn').onclick = renderHome;
+}
+
+// ── 이벤트
+$('startBtn').onclick = () => {
+  const lim = +document.querySelector('input[name=lim]:checked').value;
+  sess = newSession(lim); store.cur = sess; save(); startTest();
+};
+$('resumeBtn').onclick = () => { sess = store.cur; startTest(); };
+$('lastBtn').onclick = () => renderResult(score(store.last));
+$('choices').onclick = e => { const b = e.target.closest('button'); if (b) answer(+b.dataset.v); };
+$('prevBtn').onclick = () => { if (sess.i > 0) { sess.i--; renderQ(); } };
+$('pauseBtn').onclick = () => { clearInterval(tick); store.cur = sess; save(); renderHome(); };
+document.addEventListener('keydown', e => {
+  if ($('test').hidden) return;
+  if (e.key >= '1' && e.key <= '5') answer(+e.key);
+  if (e.key === 'Backspace' || e.key === 'ArrowLeft') $('prevBtn').click();
+});
+
+renderHome();
+}
+</script>
+</body>
+</html>
